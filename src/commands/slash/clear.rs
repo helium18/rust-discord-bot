@@ -1,3 +1,5 @@
+use super::global_slash;
+use crate::BotError;
 use serenity::http::Http;
 use serenity::model::channel::GuildChannel;
 use serenity::model::interactions::application_command::{
@@ -7,12 +9,9 @@ use serenity::{
     builder::CreateApplicationCommandOption,
     model::interactions::application_command::ApplicationCommandOptionType,
 };
-use std::error::Error;
-
-use super::global_slash;
 
 // TODO add restrictions (only admin can abuse)
-pub async fn command_clear_setup(http: &Http) -> Result<(), Box<dyn Error + Sync + Send>> {
+pub async fn command_clear_setup(http: &Http) -> Result<(), BotError> {
     let mut count = CreateApplicationCommandOption::default();
 
     count

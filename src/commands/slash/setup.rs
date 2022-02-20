@@ -1,3 +1,9 @@
+use self::clear::{command_clear, command_clear_setup};
+use super::memes::{command_meme, command_memes_setup};
+use crate::utils::log_err;
+use crate::utils::LogMedium;
+use crate::BotError;
+use async_recursion::async_recursion;
 use serenity::builder::CreateApplicationCommandOption;
 use serenity::http::Http;
 use serenity::model::channel::Channel;
@@ -7,12 +13,7 @@ use serenity::model::interactions::application_command::{
 use serenity::model::interactions::{
     InteractionApplicationCommandCallbackDataFlags, InteractionResponseType,
 };
-use std::error::Error;
 use std::fmt::Display;
-
-use self::clear::{command_clear, command_clear_setup};
-
-use super::memes::{command_meme, command_memes_setup};
 
 mod clear;
 
@@ -21,7 +22,7 @@ pub enum ResponseType {
     Ephemeral,
 }
 
-pub async fn slash_setup(http: &Http) -> Result<(), Box<dyn Error + Send + Sync>> {
+pub async fn slash_setup(http: &Http) -> Result<(), BotError> {
     global_slash("father", "Summon the father", vec![], http).await?;
     global_slash("cock", "cock ?!?!?!?!", vec![], http).await?;
     command_clear_setup(http).await?;
@@ -29,9 +30,6 @@ pub async fn slash_setup(http: &Http) -> Result<(), Box<dyn Error + Send + Sync>
     Ok(())
 }
 
-// TODO same as above
-// TODO better error handlng
-// TODO array not found -> subreddit not found
 pub async fn slash_react(http: &Http, command: &ApplicationCommandInteraction) {
     let mut guild_channel = None;
 
@@ -85,7 +83,7 @@ pub async fn global_slash(
     description: &str,
     options: Vec<CreateApplicationCommandOption>,
     http: &Http,
-) -> Result<(), Box<dyn Error + Send + Sync>> {
+) -> Result<(), BotError> {
     let commands = ApplicationCommand::create_global_application_command(http, |command| {
         match options.len() {
             0 => command.name(name).description(description),
@@ -98,20 +96,21 @@ pub async fn global_slash(
             }
         }
     })
-    .await?;
+    .await
+    .map_err(|err| BotError::GlobalSlashCommandsCreationFail(format!("{:#?}", err)))?;
 
     println!("The command `{}` was registered", commands.name);
 
     Ok(())
 }
 
-async fn interact<T: Display>(
+#[async_recursion]
+pub async fn interact<T: Display + Send>(
     http: &Http,
     content: T,
     interaction: &ApplicationCommandInteraction,
     response_type: ResponseType,
 ) {
-    let content = content.to_string();
     if let Err(why) = {
         let flag = match response_type {
             ResponseType::Normal => InteractionApplicationCommandCallbackDataFlags::empty(),
@@ -125,6 +124,13 @@ async fn interact<T: Display>(
             })
             .await
     } {
-        println!("Failed slash command interaction. Reason: {}", why);
+        let error = format!("Failed slash command interaction.\nReason: {}", why);
+        println!("{}", &error);
+        log_err(
+            http,
+            BotError::SlashCommandInteractionFail(why.to_string()),
+            LogMedium::Message(interaction.channel_id),
+        )
+        .await;
     }
 }
