@@ -4,11 +4,16 @@ use std::{
     ops::Deref,
 };
 
+use serenity::utils::Color;
+
 #[path = "./commands/commands.rs"]
 pub mod commands;
 
 #[path = "./utils/utils.rs"]
 pub mod utils;
+
+pub const FOOTER_IMAGE: &str = "https://i.imgur.com/TRbBsKu.jpeg";
+pub const COLOR: Color = Color::from_rgb(88, 101, 242);
 
 trait Logging: Debug + Send + Sync {}
 trait BotErrorLogging: Error + Send + Send + Debug {}
@@ -27,6 +32,7 @@ pub enum BotError {
     UserRoleCheckFail(String),
     GlobalSlashCommandsCreationFail(String),
     SlashCommandInteractionFail(String),
+    DeleteMessageFail(String),
 }
 
 #[derive(Debug)]
@@ -74,6 +80,9 @@ impl Display for BotError {
             }
             BotError::SlashCommandInteractionFail(err) => {
                 format!("Failed Slash Command Interaction:\n```{}```", err)
+            }
+            BotError::DeleteMessageFail(err) => {
+                format!("Failed to delete the `Message`:\n```{}```", err)
             }
         };
 

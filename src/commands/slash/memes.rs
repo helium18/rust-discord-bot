@@ -1,11 +1,12 @@
 use crate::commands::setup::global_slash;
-use crate::{BotError, NotFound};
+use crate::{BotError, NotFound, COLOR, FOOTER_IMAGE};
 use rand::Rng;
-use serenity::builder::CreateApplicationCommandOption;
+use serenity::builder::{CreateApplicationCommandOption, CreateInteractionResponseData};
 use serenity::http::Http;
 use serenity::model::interactions::application_command::{
     ApplicationCommandInteractionDataOptionValue, ApplicationCommandOptionType,
 };
+use serenity::model::interactions::InteractionApplicationCommandCallbackDataFlags;
 use serenity::model::prelude::application_command::ApplicationCommandInteraction;
 
 struct Meme {
@@ -13,6 +14,7 @@ struct Meme {
     subreddit: String,
     title: String,
     is_nsfw: bool,
+    permalink: String,
 }
 
 enum Url {
@@ -58,6 +60,11 @@ fn meme(json: serde_json::Value) -> Result<Meme, BotError> {
 
     let subreddit = head["subreddit"].to_string().replace("\"", "");
 
+    let permalink = format!(
+        "https://www.reddit.com{}",
+        head["permalink"].to_string().replace("\"", "")
+    );
+
     let title = head["title"].to_string().replace("\"", "");
 
     Ok(Meme {
@@ -65,6 +72,7 @@ fn meme(json: serde_json::Value) -> Result<Meme, BotError> {
         subreddit,
         title,
         is_nsfw,
+        permalink,
     })
 }
 
@@ -118,7 +126,7 @@ async fn get_memes(interaction: &ApplicationCommandInteraction) -> Result<Reciev
         .clone()
         .into_iter()
         .map(|opt| opt.resolved)
-        // .filter(|opt| opt.is_some())
+        .filter(|opt| opt.is_some())
         .for_each(|opt| match opt.unwrap() {
             ApplicationCommandInteractionDataOptionValue::Boolean(b) => nsfw = b,
             ApplicationCommandInteractionDataOptionValue::String(s) => {
@@ -145,19 +153,41 @@ async fn get_memes(interaction: &ApplicationCommandInteraction) -> Result<Reciev
 
 // TODO Return embed instead
 // TODO Make program look better (url especially)
-pub async fn command_meme(interaction: &ApplicationCommandInteraction) -> Result<String, BotError> {
-    let recieved = get_memes(interaction).await?;
-
-    let url = match recieved.meme.url {
-        Url::Image(url) | Url::Video(url) => url,
-    };
+pub async fn command_meme(
+    interaction: &ApplicationCommandInteraction,
+) -> Result<CreateInteractionResponseData, BotError> {
+    let mut recieved = get_memes(interaction).await?;
+    let mut content = CreateInteractionResponseData::default();
 
     if !recieved.nsfw_allowed && recieved.meme.is_nsfw {
-        Ok("https://tenor.com/view/haram-heisenberg-gif-20680378".into())
-    } else {
-        Ok(format!(
-            "Title: {}\nUrl: {}\nSubreddit: {}",
-            recieved.meme.title, url, recieved.meme.subreddit
-        ))
+        recieved.meme.title = "Nsfw detected \\😡".into();
+        recieved.meme.url =
+            Url::Image("https://media.tenor.co/videos/9695473bcdf08b119f66cbb0cf4a2bd3/mp4".into());
     }
+
+    match recieved.meme.url {
+        Url::Image(img) => {
+            content.create_embed(|embed| {
+                embed
+                    .url(recieved.meme.permalink)
+                    .title(format!("**{}**", recieved.meme.title))
+                    .image(img)
+                    .color(COLOR);
+
+                embed.footer(|footer| {
+                    footer.icon_url(FOOTER_IMAGE).text(format!(
+                        "Click the title for source.\nSubreddit: r/{}",
+                        recieved.meme.subreddit
+                    ))
+                })
+            });
+        }
+        Url::Video(_) => {
+            content.content(recieved.meme.permalink);
+        }
+    }
+
+    content.flags(InteractionApplicationCommandCallbackDataFlags::empty());
+
+    Ok(content)
 }
