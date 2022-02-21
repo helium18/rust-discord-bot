@@ -46,9 +46,7 @@ pub async fn command_clear(
         .ok_or("lmaoded, expected user object but can't find it.")?;
 
     match option {
-        // TODO add delete function
         ApplicationCommandInteractionDataOptionValue::Integer(count) => {
-            // TODO if delete messages fails then don't print success message
             delete_messages(count, http, &channel).await;
             Ok(format!("Deleted {count} messages"))
         }
@@ -56,7 +54,6 @@ pub async fn command_clear(
     }
 }
 
-// TODO better error handling
 async fn delete_messages(count: &i64, http: &Http, channel: &GuildChannel) {
     let messages = channel
         .messages(http, |x| x.limit(*count as u64))

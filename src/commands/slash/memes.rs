@@ -151,8 +151,6 @@ async fn get_memes(interaction: &ApplicationCommandInteraction) -> Result<Reciev
     }
 }
 
-// TODO Return embed instead
-// TODO Make program look better (url especially)
 pub async fn command_meme(
     interaction: &ApplicationCommandInteraction,
 ) -> Result<CreateInteractionResponseData, BotError> {
@@ -161,8 +159,7 @@ pub async fn command_meme(
 
     if !recieved.nsfw_allowed && recieved.meme.is_nsfw {
         recieved.meme.title = "Nsfw detected \\😡".into();
-        recieved.meme.url =
-            Url::Image("https://media.tenor.co/videos/9695473bcdf08b119f66cbb0cf4a2bd3/mp4".into());
+        recieved.meme.url = Url::Image("https://i.imgur.com/4R0eAtX.gif".into());
     }
 
     match recieved.meme.url {

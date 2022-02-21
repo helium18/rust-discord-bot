@@ -33,6 +33,7 @@ pub enum BotError {
     GlobalSlashCommandsCreationFail(String),
     SlashCommandInteractionFail(String),
     DeleteMessageFail(String),
+    MessageSendFail(String),
 }
 
 #[derive(Debug)]
@@ -83,6 +84,9 @@ impl Display for BotError {
             }
             BotError::DeleteMessageFail(err) => {
                 format!("Failed to delete the `Message`:\n```{}```", err)
+            }
+            BotError::MessageSendFail(err) => {
+                format!("Failed to send the `Message`:\n```{}```", err)
             }
         };
 

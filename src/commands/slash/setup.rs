@@ -1,5 +1,6 @@
 use self::clear::{command_clear, command_clear_setup};
 use super::memes::{command_meme, command_memes_setup};
+use super::slashembed::{command_embed, command_embed_setup};
 use crate::utils::log_err;
 use crate::utils::LogMedium;
 use crate::BotError;
@@ -27,6 +28,7 @@ pub async fn slash_setup(http: &Http) -> Result<(), BotError> {
     global_slash("cock", "cock ?!?!?!?!", vec![], http).await?;
     command_clear_setup(http).await?;
     command_memes_setup(http).await?;
+    command_embed_setup(http).await?;
     Ok(())
 }
 
@@ -53,10 +55,27 @@ pub async fn slash_react(http: &Http, command: &ApplicationCommandInteraction) {
             interact(http, content, command).await
         }
         "clear" => {
-            match command_clear(command, http, guild_channel.expect("empty guild channel")).await {
+            match command_clear(command, http, guild_channel.expect("Empty guild channel")).await {
                 Ok(v) | Err(v) => {
                     content
                         .content(v)
+                        .flags(InteractionApplicationCommandCallbackDataFlags::EPHEMERAL);
+                    interact(http, content, command).await;
+                }
+            }
+        }
+        // TODO Fix `.unwrap()` and use `log_err()` instead
+        "embed" => {
+            match command_embed(command, http, guild_channel.expect("Empty guild channel")).await {
+                Ok(_) => {
+                    content
+                        .content("The embed was sent!")
+                        .flags(InteractionApplicationCommandCallbackDataFlags::EPHEMERAL);
+                    interact(http, content, command).await;
+                }
+                Err(err) => {
+                    content
+                        .content(err)
                         .flags(InteractionApplicationCommandCallbackDataFlags::EPHEMERAL);
                     interact(http, content, command).await;
                 }
