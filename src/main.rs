@@ -44,6 +44,7 @@ impl EventHandler for Handler {
 }
 
 // TODO research about format strings and fix them
+// TODO add binary distribute command
 #[tokio::main]
 async fn main() {
     let framework = StandardFramework::new()
